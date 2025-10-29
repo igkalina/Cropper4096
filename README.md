@@ -9,7 +9,7 @@ Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` via 
 ---
 
 ## ✨ Features
-<<<<<<< HEAD
+
 - Randomly selects an image from a chosen input folder  
 - Random crop of 4096×2304 px, scaled if smaller  
 - Auto compression to ≤1 MB (quality adjusted dynamically)  
@@ -31,13 +31,10 @@ Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` via 
 
 ## 🧰 Requirements
 - **Python 3.10+**
-<<<<<<< HEAD
+
 - Libraries:  
   ```bash
   pip install pillow
-=======
-- Library:
-  ```bash
   pip install pillow
   ```
 
@@ -131,4 +128,5 @@ dist/
 .DS_Store
 Thumbs.db
 ```
+
 
