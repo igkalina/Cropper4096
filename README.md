@@ -120,7 +120,11 @@ Thumbs.db
 ---
 
 ## 🆕 Changelog
-
+### v1.2 (October 2025)
+- Added automatic **center logo crop (512×512 px)**.  
+  After the main 4096×2304 crop, the program now creates an additional centered 512×512 crop and compresses it to ≤ 1 MB.  
+  The file is saved in the same output folder with the suffix `_logo.jpg`.
+  
 ### v1.1 (October 2025)
 - Added checkbox to delete source images after crop
 - Added “Single File” tab for direct image cropping
