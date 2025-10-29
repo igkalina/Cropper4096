@@ -1,6 +1,5 @@
 # Cropper4096
 
-<<<<<<< HEAD
 A lightweight GUI tool that randomly crops large images to **4096×2304 px** and saves them as compressed JPEG files (≤1 MB).  
 Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` with PyInstaller.
 =======
@@ -132,3 +131,4 @@ dist/
 .DS_Store
 Thumbs.db
 ```
+
