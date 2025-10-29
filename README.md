@@ -6,7 +6,6 @@ Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` with
 =======
 A lightweight desktop tool that randomly crops large images to **4096×2304 px** and automatically compresses them to **≤1 MB JPEGs**.  
 Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` via **PyInstaller**.
->>>>>>> c18950b (Add English README)
 
 ---
 
@@ -28,7 +27,6 @@ Built with **Python + Tkinter + Pillow**, packaged into a standalone `.exe` via 
 - Saves output as `*_crop.jpg` (no overwriting — adds `_1`, `_2`, etc.)  
 - Remembers your last used folders between sessions  
 - Includes optional PowerShell script to locally sign `.exe` files on Windows
->>>>>>> c18950b (Add English README)
 
 ---
 
@@ -134,18 +132,3 @@ dist/
 .DS_Store
 Thumbs.db
 ```
-
----
-
-## 📦 Publishing to GitHub
-1. Create a new repository (e.g. `Cropper4096`) on GitHub.  
-2. In your local project folder run:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: GUI, signing script, README"
-   git branch -M main
-   git remote add origin https://github.com/<your_username>/Cropper4096.git
-   git push -u origin main
-   ```
-3. (Optional) Upload `Cropper4096.exe` to **Releases** instead of pushing it into the repo.
