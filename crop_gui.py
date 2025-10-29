@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -12,8 +13,10 @@ from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageOps
 
 TARGET_W, TARGET_H = 4096, 2304
+LOGO_SIZE = 512
 MAX_BYTES = 1_000_000
 OUTPUT_SUFFIX = "_crop"
+LOGO_SUFFIX = "_logo"
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 
 # ----------------- КОНФИГ -----------------
@@ -78,6 +81,23 @@ def random_crop(img: Image.Image, tw: int, th: int) -> Image.Image:
     y0 = random.randint(0, max(0, h - th))
     return img.crop((x0, y0, x0 + tw, y0 + th))
 
+def center_square_crop(img: Image.Image, size: int) -> Image.Image:
+    w, h = img.size
+    if w < size or h < size:
+        img = ensure_min_size_cover(img, size, size)
+        w, h = img.size
+    cx, cy = w // 2, h // 2
+    half = size // 2
+    x0 = max(0, cx - half)
+    y0 = max(0, cy - half)
+    x1 = x0 + size
+    y1 = y0 + size
+    if x1 > w:
+        x0 = w - size; x1 = w
+    if y1 > h:
+        y0 = h - size; y1 = h
+    return img.crop((x0, y0, x1, y1))
+
 def save_under_limit(img: Image.Image, out_path: Path, max_bytes: int, q_min: int, q_max: int) -> bool:
     low, high = q_min, q_max
     best_buf = None
@@ -119,44 +139,46 @@ def non_clobber_path(base_path: Path) -> Path:
             return cand
         i += 1
 
-def process_one_random(input_dir: Path, output_dir: Path) -> tuple[Path, Path]:
-    src = pick_random_image(input_dir)
-    img = load_image_fix_orientation(src)
-    img = ensure_min_size_cover(img, TARGET_W, TARGET_H)
-    img = random_crop(img, TARGET_W, TARGET_H)
-    out_name = f"{src.stem}{OUTPUT_SUFFIX}.jpg"
-    out_path = non_clobber_path(output_dir / out_name)
-    try_save_jpeg_under_1mb(img, out_path)
-    return src, out_path
+def process_main_and_logo_from_image(img_original: Image.Image, base_stem: str, output_dir: Path) -> tuple[Path, Path]:
+    img_main = ensure_min_size_cover(img_original, TARGET_W, TARGET_H)
+    img_main = random_crop(img_main, TARGET_W, TARGET_H)
+    out_main = non_clobber_path(output_dir / f"{base_stem}{OUTPUT_SUFFIX}.jpg")
+    try_save_jpeg_under_1mb(img_main, out_main)
 
-def process_one_selected(file_path: Path, output_dir: Path) -> Path:
+    img_logo = center_square_crop(img_original, LOGO_SIZE)
+    out_logo = non_clobber_path(output_dir / f"{base_stem}{LOGO_SUFFIX}.jpg")
+    try_save_jpeg_under_1mb(img_logo, out_logo)
+
+    return out_main, out_logo
+
+def process_one_random(input_dir: Path, output_dir: Path) -> tuple[Path, Path, Path]:
+    src = pick_random_image(input_dir)
+    img_orig = load_image_fix_orientation(src)
+    out_main, out_logo = process_main_and_logo_from_image(img_orig, src.stem, output_dir)
+    return src, out_main, out_logo
+
+def process_one_selected(file_path: Path, output_dir: Path) -> tuple[Path, Path]:
     if not file_path.is_file():
         raise FileNotFoundError("Выбранный файл не существует.")
     if file_path.suffix.lower() not in EXTS:
         raise ValueError("Выбранный файл не является поддерживаемым изображением.")
-    img = load_image_fix_orientation(file_path)
-    img = ensure_min_size_cover(img, TARGET_W, TARGET_H)
-    img = random_crop(img, TARGET_W, TARGET_H)
-    out_name = f"{file_path.stem}{OUTPUT_SUFFIX}.jpg"
-    out_path = non_clobber_path(output_dir / out_name)
-    try_save_jpeg_under_1mb(img, out_path)
-    return out_path
+    img_orig = load_image_fix_orientation(file_path)
+    out_main, out_logo = process_main_and_logo_from_image(img_orig, file_path.stem, output_dir)
+    return out_main, out_logo
 
 # ---------- GUI ----------
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Случайный кроп 4096×2304 → JPEG ≤ 1 МБ")
-        self.geometry("760x360")
+        self.title("Случайный кроп 4096×2304 → JPEG ≤ 1 МБ (+ logo 512×512)")
+        self.geometry("780x380")
         self.resizable(False, False)
 
         cfg = load_config()
-        # вкладка 1 (папки)
         self.input_var = tk.StringVar(value=cfg.get("input_dir", ""))
         self.output_var = tk.StringVar(value=cfg.get("output_dir", ""))
         self.delete_src_var = tk.BooleanVar(value=cfg.get("delete_after", False))
-        # вкладка 2 (один файл)
         self.file_var = tk.StringVar(value=cfg.get("single_file", ""))
         self.output2_var = tk.StringVar(value=cfg.get("output_dir2", cfg.get("output_dir", "")))
 
@@ -189,12 +211,10 @@ class App(tk.Tk):
         ttk.Entry(row_out, textvariable=self.output_var).pack(side="left", fill="x", expand=True)
         ttk.Button(row_out, text="Обзор…", command=self.browse_output).pack(side="left", padx=(8, 0))
 
-        # delete checkbox
         frm_opts = ttk.Frame(tab1); frm_opts.pack(fill="x", **pad)
         ttk.Checkbutton(frm_opts, text="Удалять исходный файл после кадрирования (без корзины)",
                         variable=self.delete_src_var, command=self.save_current_paths).pack(anchor="w")
 
-        # buttons
         frm_btn = ttk.Frame(tab1); frm_btn.pack(fill="x", **pad)
         self.btn_go1 = ttk.Button(frm_btn, text="Кадрировать", command=self.on_crop_random, style="Accent.TButton")
         self.btn_go1.pack(side="left", padx=(0, 8))
@@ -221,7 +241,6 @@ class App(tk.Tk):
         self.btn_go2.pack(side="left", padx=(0, 8))
         ttk.Button(frm_btn2, text="Открыть папку сохранения", command=self.open_output_dir2).pack(side="left")
 
-        # status
         frm_status = ttk.Frame(self); frm_status.pack(fill="x", **pad)
         ttk.Label(frm_status, textvariable=self.status_var, foreground="#444").pack(anchor="w")
 
@@ -268,22 +287,24 @@ class App(tk.Tk):
         self.save_current_paths()
 
         try:
-            src, out_path = process_one_random(in_dir, out_dir)
-            # удаление исходника, если отмечено
+            src, out_main, out_logo = process_one_random(in_dir, out_dir)
+
+            deleted_note = ""
             if delete_src:
                 try:
                     os.remove(src)
                     deleted_note = " (исходник удалён)"
                 except Exception as e:
                     deleted_note = f" (не удалось удалить исходник: {e})"
-            else:
-                deleted_note = ""
-            self.status_var.set(f"Готово: {out_path.name} (из {src.name}){deleted_note}")
-            try:
-                size = out_path.stat().st_size
-            except Exception:
-                size = "?"
-            messagebox.showinfo("Готово", f"Сохранено:\n{out_path}\nРазмер: {size} байт{deleted_note}")
+
+            size_main = out_main.stat().st_size if out_main.exists() else "?"
+            size_logo = out_logo.stat().st_size if out_logo.exists() else "?"
+            self.status_var.set(f"Готово: {out_main.name} и {out_logo.name} (из {src.name}){deleted_note}")
+            messagebox.showinfo(
+                "Готово",
+                f"Сохранено:\n{out_main}\nРазмер: {size_main} байт\n\n"
+                f"Сохранено:\n{out_logo}\nРазмер: {size_logo} байт\n{deleted_note}"
+            )
         except FileNotFoundError as e:
             messagebox.showwarning("Нет изображений", str(e))
             self.status_var.set("В выбранной входной папке не найдено изображений.")
@@ -312,13 +333,15 @@ class App(tk.Tk):
         self.save_current_paths()
 
         try:
-            out_path = process_one_selected(file_path, out_dir)
-            self.status_var.set(f"Готово: {out_path.name} (из {file_path.name})")
-            try:
-                size = out_path.stat().st_size
-            except Exception:
-                size = "?"
-            messagebox.showinfo("Готово", f"Сохранено:\n{out_path}\nРазмер: {size} байт")
+            out_main, out_logo = process_one_selected(file_path, out_dir)
+            size_main = out_main.stat().st_size if out_main.exists() else "?"
+            size_logo = out_logo.stat().st_size if out_logo.exists() else "?"
+            self.status_var.set(f"Готово: {out_main.name} и {out_logo.name} (из {file_path.name})")
+            messagebox.showinfo(
+                "Готово",
+                f"Сохранено:\n{out_main}\nРазмер: {size_main} байт\n\n"
+                f"Сохранено:\n{out_logo}\nРазмер: {size_logo} байт"
+            )
         except (FileNotFoundError, ValueError) as e:
             messagebox.showwarning("Ошибка выбора", str(e))
             self.status_var.set("Ошибка выбора файла.")
