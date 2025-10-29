@@ -117,6 +117,19 @@ dist/
 .DS_Store
 Thumbs.db
 ```
+---
+
+## 🆕 Changelog
+
+### v1.1 (October 2025)
+- Added checkbox to delete source images after crop
+- Added “Single File” tab for direct image cropping
+- Improved error handling and remembered settings
+- Updated GUI layout (tabbed interface)
+
+### v1.0
+- Initial release
+
 
 
 
